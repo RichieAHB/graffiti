@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
+  "scripts": {
+    "build": "yarn parcel build index.html --out-dir docs --public-url /gravity/",
+    "dev": "yarn parcel index.html --no-hmr"
+  },
   "dependencies": {
     "dat.gui": "^0.7.3",
     "parcel-bundler": "^1.10.3"
