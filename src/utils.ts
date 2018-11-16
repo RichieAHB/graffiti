@@ -38,7 +38,7 @@ export const planetToSpecs = (
               pos &&
               createCircle(
                 pos,
-                2 * scale,
+                2,
                 color.setAlpha((arr.length - i) / arr.length).toString()
               )
           )

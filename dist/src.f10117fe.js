@@ -3262,7 +3262,7 @@ exports.planetToSpecs = function (scale, showPhysics, showHistory) {
     }).map(function (p) {
       return p.scale(scale);
     }).map(function (pos, i, arr) {
-      return pos && render_utils_1.createCircle(pos, 2 * scale, color.setAlpha((arr.length - i) / arr.length).toString());
+      return pos && render_utils_1.createCircle(pos, 2, color.setAlpha((arr.length - i) / arr.length).toString());
     }) : []), _toConsumableArray(showPhysics ? [render_utils_1.createArrow(pos, velo, 'rgba(255, 255, 255, 0.5)', 10, 1), render_utils_1.createArrow(pos, acc, 'rgba(255, 255, 0, 0.25)', 10, 1)] : []));
   };
 };
