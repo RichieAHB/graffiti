@@ -17,15 +17,32 @@ export const balancedCircle = (n: number, offsetAngle: number) => {
   return points;
 };
 
-export const planetToSpecs = (scale: number, showPhysics: boolean) => (
-  planet: Planet
-): Renderable[] => {
-  const { velocity, acceleration, mass, color } = planet;
+export const planetToSpecs = (
+  scale: number,
+  showPhysics: boolean,
+  showHistory: boolean
+) => (planet: Planet): Renderable[] => {
+  const { velocity, acceleration, mass, color, posHistory } = planet;
   const pos = planet.pos.scale(scale);
   const velo = pos.add(velocity.scale(scale));
   const acc = pos.add(acceleration.scale(scale));
   return [
-    createCircle(pos, Math.cbrt(mass) * scale, color, 0),
+    // todo don't set the radius here for collisions
+    createCircle(pos, Math.cbrt(mass) * scale, color.toString(), 0),
+    ...(showHistory
+      ? posHistory
+          .filter((p): p is Vec2 => !!p)
+          .map(p => p.scale(scale))
+          .map(
+            (pos, i, arr) =>
+              pos &&
+              createCircle(
+                pos,
+                2 * scale,
+                color.setAlpha((arr.length - i) / arr.length).toString()
+              )
+          )
+      : []),
     ...(showPhysics
       ? [
           createArrow(pos, velo, 'rgba(255, 255, 255, 0.5)', 10, 1),

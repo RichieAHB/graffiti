@@ -3,6 +3,10 @@ export default class Vec2 {
     return new Vec2(x, y);
   }
 
+  get rounded() {
+    return new Vec2(Math.round(this.x), Math.round(this.y));
+  }
+
   constructor(readonly x: number, readonly y: number) {
     this.x = x;
     this.y = y;

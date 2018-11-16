@@ -39,10 +39,10 @@ export default class SystemRenderer {
     ctx.restore();
   }
 
-  render(system: System, showPhysics: boolean) {
+  render(system: System, showPhysics: boolean, showHistory: boolean) {
     this.clear();
     const spec = system.planets
-      .map(planetToSpecs(this.scale, showPhysics))
+      .map(planetToSpecs(this.scale, showPhysics, showHistory))
       .reduce((acc, specs) => [...acc, ...specs], []);
 
     renderSpecs(this.ctx)(spec);

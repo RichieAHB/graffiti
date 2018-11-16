@@ -66,7 +66,9 @@ export const createCircle = (
 export type Renderable = Arrow | Circle;
 
 const renderCircle = (ctx: CanvasRenderingContext2D, circle: Circle) => {
-  const { pos, radius, color } = circle;
+  const { color } = circle;
+  const pos = circle.pos.rounded;
+  const radius = Math.round(circle.radius);
   ctx.beginPath();
   ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
   ctx.fillStyle = color;
@@ -77,13 +79,18 @@ const renderArrow = (ctx: CanvasRenderingContext2D, spec: Arrow) => {
   ctx.lineWidth = 2;
   ctx.lineCap = 'round';
 
+  const from = spec.from.rounded;
+  const to = spec.to.rounded;
+
   ctx.beginPath();
-  ctx.moveTo(spec.from.x, spec.from.y);
-  ctx.lineTo(spec.to.x, spec.to.y);
+  ctx.moveTo(from.x, from.y);
+  ctx.lineTo(to.x, to.y);
   ctx.strokeStyle = spec.color;
   ctx.stroke();
 
-  const [p1, p2, p3] = spec.tip;
+  const p1 = spec.tip[0].rounded;
+  const p2 = spec.tip[1].rounded;
+  const p3 = spec.tip[2].rounded;
 
   ctx.beginPath();
   ctx.moveTo(p1.x, p1.y);

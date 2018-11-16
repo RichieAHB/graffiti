@@ -3,6 +3,7 @@ import SystemRenderer from './SystemRenderer';
 import System from './System';
 import Planet from './Planet';
 import { balancedCircle, createDeltaGetter } from './utils';
+import Color from './Color';
 
 const lerp = (min: number, max: number, a: number) => min + (max - min) * a;
 
@@ -13,13 +14,17 @@ const balancedPlanets = (
   maxWeight: number,
   offsetAngle: number = 0
 ) =>
-  balancedCircle(n, offsetAngle).map(({ pos, velo }, i) =>
+  balancedCircle(n, offsetAngle).map(({ pos, velo }) =>
     Planet.create(
       pos.scale(dist),
       velo.scale(dist),
       lerp(minWeight, maxWeight, Math.random()),
-      `rgb(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() *
-        255})`
+      Color.create(
+        Math.random() * 255,
+        Math.random() * 255,
+        Math.random() * 255
+      ),
+      60
     )
   );
 
@@ -32,6 +37,7 @@ const vars = {
   speed: 1,
   paused: true,
   showPhysics: true,
+  showHistory: true,
   planetCount: 3,
   distance: 250,
   minMass: 110000,
@@ -45,19 +51,21 @@ const vars = {
   }
 };
 
+let i = 0;
+
 const start = () => {
   const system = System.create(
     balancedPlanets(vars.planetCount, vars.distance, vars.minMass, vars.maxMass)
   );
-  renderer.render(system, vars.showPhysics);
+  renderer.render(system, vars.showPhysics, vars.showHistory);
   const getDelta = createDeltaGetter();
   let raf = -1;
   const run = () => {
     raf = requestAnimationFrame(run);
     const delta = getDelta();
     if (!vars.paused) {
-      system.update(delta * vars.speed);
-      renderer.render(system, vars.showPhysics);
+      system.update(delta * vars.speed, !(i++ % 5));
+      renderer.render(system, vars.showPhysics, vars.showHistory);
     }
   };
   run();
@@ -75,6 +83,7 @@ gui.add(vars, 'speed', -2, 2);
 gui.add(vars, 'scale', 1.01, 3);
 const paused = gui.add(vars, 'paused');
 gui.add(vars, 'showPhysics');
+gui.add(vars, 'showHistory');
 const folder = gui.addFolder('start conditions (needs restart)');
 folder.add(vars, 'planetCount');
 folder.add(vars, 'distance');

@@ -3058,6 +3058,11 @@ function () {
       return Vec2.create(this.x * c - this.y * s, this.x * s + this.y * c);
     }
   }, {
+    key: "rounded",
+    get: function get() {
+      return new Vec2(Math.round(this.x), Math.round(this.y));
+    }
+  }, {
     key: "magnitude",
     get: function get() {
       var x = this.x,
@@ -3100,14 +3105,6 @@ function _iterableToArray(iter) { if (Symbol.iterator in Object(iter) || Object.
 
 function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = new Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } }
 
-function _slicedToArray(arr, i) { return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _nonIterableRest(); }
-
-function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance"); }
-
-function _iterableToArrayLimit(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"] != null) _i["return"](); } finally { if (_d) throw _e; } } return _arr; }
-
-function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
-
 var __importDefault = this && this.__importDefault || function (mod) {
   return mod && mod.__esModule ? mod : {
     "default": mod
@@ -3149,9 +3146,9 @@ exports.createCircle = function (pos, radius, color) {
 };
 
 var renderCircle = function renderCircle(ctx, circle) {
-  var pos = circle.pos,
-      radius = circle.radius,
-      color = circle.color;
+  var color = circle.color;
+  var pos = circle.pos.rounded;
+  var radius = Math.round(circle.radius);
   ctx.beginPath();
   ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
   ctx.fillStyle = color;
@@ -3161,17 +3158,16 @@ var renderCircle = function renderCircle(ctx, circle) {
 var renderArrow = function renderArrow(ctx, spec) {
   ctx.lineWidth = 2;
   ctx.lineCap = 'round';
+  var from = spec.from.rounded;
+  var to = spec.to.rounded;
   ctx.beginPath();
-  ctx.moveTo(spec.from.x, spec.from.y);
-  ctx.lineTo(spec.to.x, spec.to.y);
+  ctx.moveTo(from.x, from.y);
+  ctx.lineTo(to.x, to.y);
   ctx.strokeStyle = spec.color;
   ctx.stroke();
-
-  var _spec$tip = _slicedToArray(spec.tip, 3),
-      p1 = _spec$tip[0],
-      p2 = _spec$tip[1],
-      p3 = _spec$tip[2];
-
+  var p1 = spec.tip[0].rounded;
+  var p2 = spec.tip[1].rounded;
+  var p3 = spec.tip[2].rounded;
   ctx.beginPath();
   ctx.moveTo(p1.x, p1.y);
   ctx.lineTo(p2.x, p2.y);
@@ -3250,16 +3246,24 @@ exports.balancedCircle = function (n, offsetAngle) {
   return points;
 };
 
-exports.planetToSpecs = function (scale, showPhysics) {
+exports.planetToSpecs = function (scale, showPhysics, showHistory) {
   return function (planet) {
     var velocity = planet.velocity,
         acceleration = planet.acceleration,
         mass = planet.mass,
-        color = planet.color;
+        color = planet.color,
+        posHistory = planet.posHistory;
     var pos = planet.pos.scale(scale);
     var velo = pos.add(velocity.scale(scale));
     var acc = pos.add(acceleration.scale(scale));
-    return [render_utils_1.createCircle(pos, Math.cbrt(mass) * scale, color, 0)].concat(_toConsumableArray(showPhysics ? [render_utils_1.createArrow(pos, velo, 'rgba(255, 255, 255, 0.5)', 10, 1), render_utils_1.createArrow(pos, acc, 'rgba(255, 255, 0, 0.25)', 10, 1)] : []));
+    return [// todo don't set the radius here for collisions
+    render_utils_1.createCircle(pos, Math.cbrt(mass) * scale, color.toString(), 0)].concat(_toConsumableArray(showHistory ? posHistory.filter(function (p) {
+      return !!p;
+    }).map(function (p) {
+      return p.scale(scale);
+    }).map(function (pos, i, arr) {
+      return pos && render_utils_1.createCircle(pos, 2 * scale, color.setAlpha((arr.length - i) / arr.length).toString());
+    }) : []), _toConsumableArray(showPhysics ? [render_utils_1.createArrow(pos, velo, 'rgba(255, 255, 255, 0.5)', 10, 1), render_utils_1.createArrow(pos, acc, 'rgba(255, 255, 0, 0.25)', 10, 1)] : []));
   };
 };
 
@@ -3334,9 +3338,9 @@ function () {
     }
   }, {
     key: "render",
-    value: function render(system, showPhysics) {
+    value: function render(system, showPhysics, showHistory) {
       this.clear();
-      var spec = system.planets.map(utils_1.planetToSpecs(this.scale, showPhysics)).reduce(function (acc, specs) {
+      var spec = system.planets.map(utils_1.planetToSpecs(this.scale, showPhysics, showHistory)).reduce(function (acc, specs) {
         return _toConsumableArray(acc).concat(_toConsumableArray(specs));
       }, []);
       render_utils_1.renderSpecs(this.ctx)(spec);
@@ -3389,8 +3393,9 @@ function () {
     value: function update(deltaMs) {
       var _this = this;
 
+      var markHistory = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : true;
       this.planets = this.planets.map(function (planet, i) {
-        return planet.update(_toConsumableArray(_this.planets.slice(0, i)).concat(_toConsumableArray(_this.planets.slice(i + 1))), deltaMs);
+        return planet.update(_toConsumableArray(_this.planets.slice(0, i)).concat(_toConsumableArray(_this.planets.slice(i + 1))), deltaMs, markHistory);
       });
     }
   }, {
@@ -3411,6 +3416,14 @@ function () {
 exports.default = System;
 },{}],"src/Planet.ts":[function(require,module,exports) {
 "use strict";
+
+function _toConsumableArray(arr) { return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _nonIterableSpread(); }
+
+function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance"); }
+
+function _iterableToArray(iter) { if (Symbol.iterator in Object(iter) || Object.prototype.toString.call(iter) === "[object Arguments]") return Array.from(iter); }
+
+function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = new Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
@@ -3435,8 +3448,8 @@ var G = 300;
 var Planet =
 /*#__PURE__*/
 function () {
-  function Planet(pos, velocity, acceleration, // for debugging mainly
-  mass, color) {
+  function Planet(pos, velocity, acceleration, // for rendering
+  mass, color, posHistory) {
     _classCallCheck(this, Planet);
 
     this.pos = pos;
@@ -3444,11 +3457,13 @@ function () {
     this.acceleration = acceleration;
     this.mass = mass;
     this.color = color;
+    this.posHistory = posHistory;
     this.pos = pos;
     this.velocity = velocity;
     this.acceleration = acceleration;
     this.mass = mass;
     this.color = color;
+    this.posHistory = posHistory;
   }
 
   _createClass(Planet, [{
@@ -3468,12 +3483,13 @@ function () {
     }
   }, {
     key: "update",
-    value: function update(others, deltaMs) {
+    value: function update(others, deltaMs, markHistory) {
       var deltaS = deltaMs / 1000;
       var acceleration = this.getAccelerationDueToOthers(others);
       var velocity = acceleration.scale(deltaS).add(this.velocity);
       var pos = velocity.scale(deltaS).add(this.pos);
-      return new Planet(pos, velocity, acceleration, this.mass, this.color);
+      var posHistory = markHistory ? [pos].concat(_toConsumableArray(this.posHistory.slice(0, -1))) : this.posHistory;
+      return new Planet(pos, velocity, acceleration, this.mass, this.color, posHistory);
     }
   }, {
     key: "toString",
@@ -3483,7 +3499,12 @@ function () {
   }], [{
     key: "create",
     value: function create(pos, velocity, mass, color) {
-      return new Planet(pos, velocity, Vec2_1.default.create(0, 0), mass, color);
+      var posHistoryLength = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : 0;
+      return new Planet(pos, velocity, Vec2_1.default.create(0, 0), mass, color, Array.from({
+        length: posHistoryLength
+      }, function () {
+        return null;
+      }));
     }
   }]);
 
@@ -3491,7 +3512,65 @@ function () {
 }();
 
 exports.default = Planet;
-},{"./Vec2":"src/Vec2.ts"}],"src/index.ts":[function(require,module,exports) {
+},{"./Vec2":"src/Vec2.ts"}],"src/Color.ts":[function(require,module,exports) {
+"use strict";
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var Color =
+/*#__PURE__*/
+function () {
+  function Color(r, g, b, a) {
+    _classCallCheck(this, Color);
+
+    this.r = r;
+    this.g = g;
+    this.b = b;
+    this.a = a;
+    this.r = r;
+    this.g = g;
+    this.b = b;
+    this.a = a;
+  }
+
+  _createClass(Color, [{
+    key: "setAlpha",
+    value: function setAlpha(a) {
+      var r = this.r,
+          g = this.g,
+          b = this.b;
+      return Color.create(r, g, b, a);
+    }
+  }, {
+    key: "toString",
+    value: function toString() {
+      var r = this.r,
+          g = this.g,
+          b = this.b,
+          a = this.a;
+      return "rgba(".concat(r, ",").concat(g, ",").concat(b, ",").concat(a, ")");
+    }
+  }], [{
+    key: "create",
+    value: function create(r, g, b) {
+      var a = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 1;
+      return new Color(r, g, b, a);
+    }
+  }]);
+
+  return Color;
+}();
+
+exports.default = Color;
+},{}],"src/index.ts":[function(require,module,exports) {
 "use strict";
 
 var __importStar = this && this.__importStar || function (mod) {
@@ -3524,16 +3603,18 @@ var Planet_1 = __importDefault(require("./Planet"));
 
 var utils_1 = require("./utils");
 
+var Color_1 = __importDefault(require("./Color"));
+
 var lerp = function lerp(min, max, a) {
   return min + (max - min) * a;
 };
 
 var balancedPlanets = function balancedPlanets(n, dist, minWeight, maxWeight) {
   var offsetAngle = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : 0;
-  return utils_1.balancedCircle(n, offsetAngle).map(function (_ref, i) {
+  return utils_1.balancedCircle(n, offsetAngle).map(function (_ref) {
     var pos = _ref.pos,
         velo = _ref.velo;
-    return Planet_1.default.create(pos.scale(dist), velo.scale(dist), lerp(minWeight, maxWeight, Math.random()), "rgb(".concat(Math.random() * 255, ", ").concat(Math.random() * 255, ", ").concat(Math.random() * 255, ")"));
+    return Planet_1.default.create(pos.scale(dist), velo.scale(dist), lerp(minWeight, maxWeight, Math.random()), Color_1.default.create(Math.random() * 255, Math.random() * 255, Math.random() * 255), 60);
   });
 };
 
@@ -3546,6 +3627,7 @@ var vars = {
   speed: 1,
   paused: true,
   showPhysics: true,
+  showHistory: true,
   planetCount: 3,
   distance: 250,
   minMass: 110000,
@@ -3563,10 +3645,11 @@ var vars = {
   }
 
 };
+var i = 0;
 
 var start = function start() {
   var system = System_1.default.create(balancedPlanets(vars.planetCount, vars.distance, vars.minMass, vars.maxMass));
-  renderer.render(system, vars.showPhysics);
+  renderer.render(system, vars.showPhysics, vars.showHistory);
   var getDelta = utils_1.createDeltaGetter();
   var raf = -1;
 
@@ -3575,8 +3658,8 @@ var start = function start() {
     var delta = getDelta();
 
     if (!vars.paused) {
-      system.update(delta * vars.speed);
-      renderer.render(system, vars.showPhysics);
+      system.update(delta * vars.speed, !(i++ % 5));
+      renderer.render(system, vars.showPhysics, vars.showHistory);
     }
   };
 
@@ -3593,6 +3676,7 @@ gui.add(vars, 'speed', -2, 2);
 gui.add(vars, 'scale', 1.01, 3);
 var paused = gui.add(vars, 'paused');
 gui.add(vars, 'showPhysics');
+gui.add(vars, 'showHistory');
 var folder = gui.addFolder('start conditions (needs restart)');
 folder.add(vars, 'planetCount');
 folder.add(vars, 'distance');
@@ -3612,5 +3696,5 @@ if (startButton) {
     }
   });
 }
-},{"dat.gui":"node_modules/dat.gui/build/dat.gui.module.js","./SystemRenderer":"src/SystemRenderer.ts","./System":"src/System.ts","./Planet":"src/Planet.ts","./utils":"src/utils.ts"}]},{},["src/index.ts"], null)
+},{"dat.gui":"node_modules/dat.gui/build/dat.gui.module.js","./SystemRenderer":"src/SystemRenderer.ts","./System":"src/System.ts","./Planet":"src/Planet.ts","./utils":"src/utils.ts","./Color":"src/Color.ts"}]},{},["src/index.ts"], null)
 //# sourceMappingURL=/src.f10117fe.map
